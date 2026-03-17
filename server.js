@@ -51,12 +51,17 @@ app.get("/api/tcmb-rates", async (req, res) => {
     const usd = currencies.find(c => c?.$?.CurrencyCode === "USD");
     const eur = currencies.find(c => c?.$?.CurrencyCode === "EUR");
 
-    const result = {
-      source: "TCMB",
-      date: formatDate(new Date()),
-      usd: pickRate(usd),
-      eur: pickRate(eur)
-    };
+    const tcmbDateRaw = parsed?.Tarih_Date?.$?.Date || "";
+const tcmbDate = tcmbDateRaw
+  ? tcmbDateRaw.split(".").join(".") // zaten formatlı geliyor
+  : formatDate(new Date());
+
+const result = {
+  source: "TCMB",
+  date: tcmbDate,
+  usd: pickRate(usd),
+  eur: pickRate(eur)
+};
 
     res.json(result);
   } catch (error) {
