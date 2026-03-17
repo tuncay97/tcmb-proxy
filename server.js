@@ -22,12 +22,37 @@ function normalizeRate(value) {
 
 function pickRate(currency) {
   return (
-    normalizeRate(currency.ForexSelling?.[0]) ||
-    normalizeRate(currency.ForexBuying?.[0]) ||
-    normalizeRate(currency.BanknoteSelling?.[0]) ||
-    normalizeRate(currency.BanknoteBuying?.[0]) ||
+    normalizeRate(currency?.ForexSelling?.[0]) ||
+    normalizeRate(currency?.ForexBuying?.[0]) ||
+    normalizeRate(currency?.BanknoteSelling?.[0]) ||
+    normalizeRate(currency?.BanknoteBuying?.[0]) ||
     null
   );
+}
+
+function formatTcmbDate(dateValue) {
+  if (!dateValue) return formatDate(new Date());
+
+  // TCMB Date alanı çoğunlukla MM/DD/YYYY gelir
+  if (dateValue.includes("/")) {
+    const parts = dateValue.split("/");
+    if (parts.length === 3) {
+      const month = pad(parts[0]);
+      const day = pad(parts[1]);
+      const year = parts[2];
+      return `${day}.${month}.${year}`;
+    }
+  }
+
+  // Zaten DD.MM.YYYY gelirse olduğu gibi kullan
+  if (dateValue.includes(".")) {
+    const parts = dateValue.split(".");
+    if (parts.length === 3) {
+      return `${pad(parts[0])}.${pad(parts[1])}.${parts[2]}`;
+    }
+  }
+
+  return formatDate(new Date());
 }
 
 app.get("/api/tcmb-rates", async (req, res) => {
@@ -45,23 +70,21 @@ app.get("/api/tcmb-rates", async (req, res) => {
       explicitArray: true
     });
 
-    const tarihler = parsed?.Tarih_Date;
-    const currencies = tarihler?.Currency || [];
+    const root = parsed?.Tarih_Date;
+    const currencies = root?.Currency || [];
 
     const usd = currencies.find(c => c?.$?.CurrencyCode === "USD");
     const eur = currencies.find(c => c?.$?.CurrencyCode === "EUR");
 
-    const tcmbDateRaw = parsed?.Tarih_Date?.$?.Date || "";
-const tcmbDate = tcmbDateRaw
-  ? tcmbDateRaw.split(".").join(".") // zaten formatlı geliyor
-  : formatDate(new Date());
+    const tcmbDateRaw = root?.$?.Date || "";
+    const tcmbDate = formatTcmbDate(tcmbDateRaw);
 
-const result = {
-  source: "TCMB",
-  date: tcmbDate,
-  usd: pickRate(usd),
-  eur: pickRate(eur)
-};
+    const result = {
+      source: "TCMB",
+      date: tcmbDate,
+      usd: pickRate(usd),
+      eur: pickRate(eur)
+    };
 
     res.json(result);
   } catch (error) {
